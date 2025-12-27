@@ -1,13 +1,15 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { WeightEntry, FilterPeriod } from '../types';
 
 interface WeightChartProps {
   weightEntries: WeightEntry[];
   filterPeriod: FilterPeriod;
+  isLandscape?: boolean;
 }
 
-export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterPeriod }) => {
+export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterPeriod, isLandscape = false }) => {
   const [filteredData, setFilteredData] = useState<WeightEntry[]>([]);
   const [weightDifference, setWeightDifference] = useState<number | null>(null);
 
@@ -17,8 +19,8 @@ export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterP
     }
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize today's date to start of day
-    let startDate = new Date(entries[0].date); // Default to the earliest date, already sorted
+    today.setHours(0, 0, 0, 0); 
+    let startDate = new Date(entries[0].date);
 
     switch (period) {
       case FilterPeriod.MONTH:
@@ -32,15 +34,12 @@ export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterP
         break;
       case FilterPeriod.ALL:
       default:
-        // For 'ALL', ensure data is sorted by date ascending for correct first/last calculation
-        // and also map to add timestamp
         return entries.map(entry => ({
           ...entry,
           timestamp: new Date(entry.date).getTime()
         }));
     }
 
-    // Filter based on the calculated startDate and then map to add timestamp
     return entries
       .filter(entry => new Date(entry.date) >= startDate)
       .map(entry => ({
@@ -50,12 +49,10 @@ export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterP
   }, []);
 
   useEffect(() => {
-    // Sort entries by date ascending before filtering to ensure correct range calculation and first/last entry identification
     const sortedEntries = [...weightEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const newFilteredData = filterData(sortedEntries, filterPeriod);
     setFilteredData(newFilteredData);
 
-    // Calculate weight difference
     if (newFilteredData.length >= 2) {
       const firstEntryWeight = newFilteredData[0].weight;
       const lastEntryWeight = newFilteredData[newFilteredData.length - 1].weight;
@@ -67,85 +64,92 @@ export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterP
 
   if (weightEntries.length === 0) {
     return (
-      <div className="flex justify-center items-center h-64 bg-gray-50 rounded-lg border border-gray-200">
-        <p className="text-gray-500 text-lg">No weight data available. Add your first entry!</p>
+      <div className="flex justify-center items-center h-full min-h-[250px] bg-slate-50 rounded-xl border border-dashed border-slate-200">
+        <p className="text-slate-400 text-sm">Sin datos para mostrar el gráfico</p>
       </div>
     );
   }
 
-  // Determine Y-axis domain dynamically
-  const minWeight = filteredData.length > 0 ? Math.min(...filteredData.map(entry => entry.weight)) : 0;
-  const maxWeight = filteredData.length > 0 ? Math.max(...filteredData.map(entry => entry.weight)) : 100; // Default max if no data
-  const yAxisDomain = [Math.floor(minWeight - (minWeight > 0 ? 5 : 0)), Math.ceil(maxWeight + 5)]; // Add some padding, prevent negative if all weights are low
+  const weights = filteredData.map(entry => entry.weight);
+  const minWeight = weights.length > 0 ? Math.min(...weights) : 0;
+  const maxWeight = weights.length > 0 ? Math.max(...weights) : 100;
+  
+  const range = maxWeight - minWeight;
+  const padding = range === 0 ? 5 : range * 0.15;
+  const yAxisDomain = [Math.floor(minWeight - padding), Math.ceil(maxWeight + padding)];
 
   const getDifferenceColor = (diff: number | null) => {
-    if (diff === null) return 'text-gray-600';
-    if (diff > 0) return 'text-red-600'; // Weight gain
-    if (diff < 0) return 'text-green-600'; // Weight loss
-    return 'text-gray-600'; // No change
+    if (diff === null) return 'text-slate-600';
+    if (diff > 0) return 'text-rose-600';
+    if (diff < 0) return 'text-emerald-600';
+    return 'text-slate-600';
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full flex flex-col">
       {weightDifference !== null && (
-        <div className="text-center mb-4 text-lg font-semibold" aria-live="polite">
-          <span className="text-gray-700">Weight Change: </span>
+        <div className={`text-center font-bold mb-2 ${isLandscape ? 'text-xs' : 'text-sm'}`} aria-live="polite">
+          <span className="text-slate-500 uppercase tracking-tighter mr-1">Variación:</span>
           <span className={getDifferenceColor(weightDifference)}>
             {weightDifference > 0 ? '+' : ''}{weightDifference.toFixed(1)} kg
           </span>
         </div>
       )}
-      <div className="h-80 sm:h-96">
+      <div className="flex-grow w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={filteredData}
             margin={{
-              top: 5,
-              right: 30,
-              left: 20,
-              bottom: 5,
+              top: 10,
+              right: 20,
+              left: -15,
+              bottom: 10,
             }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
             <XAxis
-              dataKey="timestamp" // Use timestamp for proportional spacing
+              dataKey="timestamp"
               type="number"
               scale="time"
-              domain={['dataMin', 'dataMax']} // Ensure full range of data
+              domain={['dataMin', 'dataMax']}
               tickFormatter={(unixTime) => {
                 const date = new Date(unixTime);
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                return date.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
               }}
-              angle={-30}
-              textAnchor="end"
-              height={60}
-              stroke="#6b7280"
-              tick={{ fill: '#6b7280' }} // Ensures tick labels are visible
+              stroke="#94a3b8"
+              tick={{ fill: '#94a3b8', fontSize: isLandscape ? 10 : 11 }}
+              height={30}
             />
             <YAxis
               domain={yAxisDomain}
-              label={{ value: 'Weight', angle: -90, position: 'insideLeft', fill: '#6b7280' }}
-              stroke="#6b7280"
-              tick={{ fill: '#6b7280' }}
+              stroke="#94a3b8"
+              tick={{ fill: '#94a3b8', fontSize: isLandscape ? 10 : 11 }}
+              tickFormatter={(value) => `${value}`}
+              width={45}
+              orientation="left"
             />
             <Tooltip
-              contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', border: '1px solid #e0e0e0', borderRadius: '8px' }}
-              labelStyle={{ color: '#374151', fontWeight: 'bold' }}
-              itemStyle={{ color: '#4f46e5' }}
-              formatter={(value: number) => [`${value.toFixed(1)} kg`, 'Weight']}
-              labelFormatter={(unixTime) => { // Format tooltip label date
+              contentStyle={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                border: 'none', 
+                borderRadius: '12px',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+              }}
+              itemStyle={{ color: '#4f46e5', fontWeight: 'bold' }}
+              formatter={(value: number) => [`${value.toFixed(1)} kg`, 'Peso']}
+              labelFormatter={(unixTime) => {
                 const date = new Date(unixTime);
-                return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
               }}
             />
-            <Legend wrapperStyle={{ paddingTop: '10px' }} />
             <Line
               type="monotone"
               dataKey="weight"
               stroke="#4f46e5"
-              strokeWidth={2}
+              strokeWidth={isLandscape ? 4 : 3}
               dot={{ r: 4, fill: '#4f46e5', stroke: '#fff', strokeWidth: 2 }}
               activeDot={{ r: 6, fill: '#6366f1', stroke: '#fff', strokeWidth: 2 }}
+              animationDuration={800}
             />
           </LineChart>
         </ResponsiveContainer>

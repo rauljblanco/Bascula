@@ -1,5 +1,5 @@
 
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { getWeightEntries, importWeightEntries } from '../services/localStorageService';
 
 interface DataManagementProps {
@@ -9,7 +9,6 @@ interface DataManagementProps {
 
 export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, onError }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
 
   const handleExport = () => {
     const entries = getWeightEntries();
@@ -50,16 +49,6 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
     reader.readAsText(file);
   };
 
-  // Mock de integración con Google Drive (requiere configuración de ClientID real para funcionar plenamente)
-  const handleDriveSync = () => {
-    setIsSyncing(true);
-    // En una implementación real aquí se llamaría a gapi.client.drive.files.create
-    setTimeout(() => {
-      setIsSyncing(false);
-      alert("Para usar Google Drive necesitas configurar un Client ID de Google Cloud. El sistema de archivos local está activo.");
-    }, 1500);
-  };
-
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
@@ -77,17 +66,6 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
         >
           <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
           <span className="text-sm font-bold">Importar</span>
-        </button>
-      </div>
-
-      <div className="pt-4 border-t border-slate-100">
-        <button
-          onClick={handleDriveSync}
-          disabled={isSyncing}
-          className="w-full flex items-center justify-center p-4 bg-white border border-slate-200 rounded-xl text-slate-700 shadow-sm active:scale-95 transition-all disabled:opacity-50"
-        >
-          <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" className="w-6 h-6 mr-3" alt="Drive" />
-          <span className="font-bold">{isSyncing ? 'Sincronizando...' : 'Conectar Google Drive'}</span>
         </button>
       </div>
 
