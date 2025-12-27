@@ -11,6 +11,33 @@ import { DataManagement } from './components/DataManagement';
 type View = 'home' | 'history' | 'settings';
 
 function App() {
+  // --- FUNCIÓN DE EXPORTACIÓN PARA MÓVIL ---
+  const handleExportMobile = async () => {
+    try {
+      const dataToExport = JSON.stringify(weightEntries, null, 2);
+      const fileName = "mis_pesajes.json";
+      
+      if (navigator.share) {
+        const file = new File([dataToExport], fileName, { type: 'application/json' });
+        await navigator.share({
+          files: [file],
+          title: 'Mis Datos de Peso',
+          text: 'Copia de seguridad de mi báscula'
+        });
+      } else {
+        // Fallback para PC
+        const blob = new Blob([dataToExport], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+      }
+    } catch (e) {
+      setError("No se pudo exportar el archivo.");
+    }
+  };
+  // ------------------------------------------
   const [activeView, setActiveView] = useState<View>('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
@@ -180,20 +207,35 @@ function App() {
         )}
 
         {activeView === 'settings' && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-            <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-              <h2 className="text-lg font-bold text-indigo-900 mb-2">Copia de Seguridad</h2>
-              <p className="text-xs text-slate-500 mb-4">Gestiona tus datos localmente o en la nube.</p>
-              <DataManagement 
-                onDataChanged={fetchWeightEntries} 
-                onError={(msg) => {
-                  setError(msg);
-                  setTimeout(() => setError(null), 5000);
-                }}
-              />
-            </section>
-          </div>
-        )}
+  <div className="space-y-6 animate-in fade-in duration-500">
+    <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+      <h2 className="text-lg font-bold text-indigo-900 mb-2">Copia de Seguridad</h2>
+      <p className="text-xs text-slate-500 mb-4">Usa este botón si estás en el móvil para guardar tus datos.</p>
+
+      {/* BOTÓN NUEVO PARA MÓVIL */}
+      <button 
+        onClick={handleExportMobile}
+        className="w-full mb-6 bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-3 active:scale-95 transition-all"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+        </svg>
+        EXPORTAR A MI MÓVIL
+      </button>
+
+      <hr className="mb-6 border-slate-100" />
+
+      <p className="text-xs text-slate-400 mb-4 uppercase font-semibold tracking-wider">Opciones avanzadas</p>
+      <DataManagement 
+        onDataChanged={fetchWeightEntries} 
+        onError={(msg) => {
+          setError(msg);
+          setTimeout(() => setError(null), 5000);
+        }}
+      />
+    </section>
+  </div>
+)}
       </main>
 
       {error && (
