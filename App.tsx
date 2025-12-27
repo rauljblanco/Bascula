@@ -228,6 +228,7 @@ function App() {
       <p className="text-xs text-slate-400 mb-4 uppercase font-semibold tracking-wider">Opciones avanzadas</p>
       <DataManagement 
         onDataChanged={fetchWeightEntries} 
+        onExport={handleExportMobile}
         onError={(msg) => {
           setError(msg);
           setTimeout(() => setError(null), 5000);
