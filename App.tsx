@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { WeightEntry, FilterPeriod } from './types';
 import { getWeightEntries, saveWeightEntry, deleteWeightEntry } from './services/localStorageService';
@@ -7,7 +8,10 @@ import { WeightEntryList } from './components/WeightEntryList';
 import { EditWeightModal } from './components/EditWeightModal';
 import { DataManagement } from './components/DataManagement';
 
+type View = 'home' | 'history' | 'settings';
+
 function App() {
+  const [activeView, setActiveView] = useState<View>('home');
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
   const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>(FilterPeriod.ALL);
   const [loading, setLoading] = useState<boolean>(true);
@@ -21,7 +25,6 @@ function App() {
       setLoading(false);
     } catch (e) {
       setError("Error al cargar los registros de peso.");
-      console.error(e);
       setLoading(false);
     }
   }, []);
@@ -32,23 +35,20 @@ function App() {
 
   const handleAddWeight = useCallback((date: string, weight: number) => {
     try {
-      const newEntry: WeightEntry = { date, weight };
-      saveWeightEntry(newEntry);
+      saveWeightEntry({ date, weight });
       fetchWeightEntries();
     } catch (e) {
       setError("Error al guardar el registro.");
-      console.error(e);
     }
   }, [fetchWeightEntries]);
 
   const handleDeleteWeight = useCallback((date: string) => {
-    if (window.confirm("¿Estás seguro de que quieres eliminar este registro de peso?")) {
+    if (window.confirm("¿Estás seguro de que quieres eliminar este registro?")) {
       try {
         deleteWeightEntry(date);
         fetchWeightEntries();
       } catch (e) {
         setError("Error al eliminar el registro.");
-        console.error(e);
       }
     }
   }, [fetchWeightEntries]);
@@ -60,75 +60,105 @@ function App() {
       setEditingEntry(null);
     } catch (e) {
       setError("Error al actualizar el registro.");
-      console.error(e);
     }
   }, [fetchWeightEntries]);
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50">
-        <p className="text-xl text-indigo-600">Cargando...</p>
+      <div className="flex justify-center items-center min-h-screen bg-indigo-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 sm:p-6 lg:p-8">
-      <header className="text-center mb-8">
-        <h1 className="text-4xl font-extrabold text-indigo-800 tracking-tight sm:text-5xl">
-          Weight Tracker
+    <div className="min-h-screen flex flex-col bg-slate-50 pb-20">
+      <header className="bg-indigo-600 text-white p-4 shadow-md sticky top-0 z-10">
+        <h1 className="text-xl font-bold text-center tracking-tight">
+          {activeView === 'home' && 'Mi Progreso'}
+          {activeView === 'history' && 'Historial'}
+          {activeView === 'settings' && 'Ajustes'}
         </h1>
-        <p className="mt-3 text-lg text-indigo-600 max-w-md mx-auto">
-          Monitoriza tu evolución día a día.
-        </p>
       </header>
 
-      <main className="container mx-auto max-w-3xl space-y-8">
-        {/* 1. Nuevo Registro */}
-        <section className="bg-white p-6 rounded-xl shadow-lg border border-indigo-200">
-          <h2 className="text-2xl font-bold text-indigo-700 mb-6">Añadir Nuevo Registro</h2>
-          <WeightInputForm onAddWeight={handleAddWeight} />
-        </section>
+      <main className="flex-grow container mx-auto p-4">
+        {activeView === 'home' && (
+          <div className="space-y-6 animate-in slide-in-from-right duration-300">
+            <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+              <h2 className="text-lg font-bold text-indigo-900 mb-4">Nuevo Registro</h2>
+              <WeightInputForm onAddWeight={handleAddWeight} />
+            </section>
 
-        {/* 2. Tu Progreso (Gráfico) */}
-        <section className="bg-white p-6 rounded-xl shadow-lg border border-indigo-200">
-          <h2 className="text-2xl font-bold text-indigo-700 mb-6">Tu Progreso</h2>
-          <div className="flex flex-wrap gap-2 mb-6">
-            <FilterButton label="Mes" period={FilterPeriod.MONTH} currentPeriod={filterPeriod} onClick={setFilterPeriod} />
-            <FilterButton label="3 Meses" period={FilterPeriod.THREE_MONTHS} currentPeriod={filterPeriod} onClick={setFilterPeriod} />
-            <FilterButton label="Año" period={FilterPeriod.YEAR} currentPeriod={filterPeriod} onClick={setFilterPeriod} />
-            <FilterButton label="Todo" period={FilterPeriod.ALL} currentPeriod={filterPeriod} onClick={setFilterPeriod} />
+            <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold text-indigo-900">Evolución</h2>
+                <select 
+                  value={filterPeriod} 
+                  onChange={(e) => setFilterPeriod(e.target.value as FilterPeriod)}
+                  className="bg-indigo-50 border-none text-indigo-700 text-sm rounded-lg p-1 focus:ring-0"
+                >
+                  <option value={FilterPeriod.MONTH}>Mes</option>
+                  <option value={FilterPeriod.THREE_MONTHS}>3 Meses</option>
+                  <option value={FilterPeriod.YEAR}>Año</option>
+                  <option value={FilterPeriod.ALL}>Todo</option>
+                </select>
+              </div>
+              <WeightChart weightEntries={weightEntries} filterPeriod={filterPeriod} />
+            </section>
           </div>
-          <WeightChart weightEntries={weightEntries} filterPeriod={filterPeriod} />
-        </section>
+        )}
 
-        {/* 3. Historial de Entradas */}
-        <section className="bg-white p-6 rounded-xl shadow-lg border border-indigo-200">
-          <h2 className="text-2xl font-bold text-indigo-700 mb-6">Historial de Entradas</h2>
-          <WeightEntryList
-            weightEntries={weightEntries}
-            onEditRequest={setEditingEntry}
-            onDelete={handleDeleteWeight}
-          />
-        </section>
+        {activeView === 'history' && (
+          <div className="animate-in slide-in-from-right duration-300">
+             <WeightEntryList
+                weightEntries={weightEntries}
+                onEditRequest={setEditingEntry}
+                onDelete={handleDeleteWeight}
+              />
+          </div>
+        )}
 
-        {/* 4. Gestión de Datos */}
-        <section className="bg-white p-6 rounded-xl shadow-lg border border-indigo-200">
-          <h2 className="text-xl font-bold text-indigo-700 mb-4">Gestión de Datos</h2>
-          <p className="text-sm text-gray-500 mb-4">Copia de seguridad y restauración de tus registros.</p>
-          <DataManagement 
-            onDataChanged={fetchWeightEntries} 
-            onError={(msg) => {
-              setError(msg);
-              setTimeout(() => setError(null), 5000);
-            }}
-          />
-        </section>
+        {activeView === 'settings' && (
+          <div className="space-y-6 animate-in slide-in-from-right duration-300">
+            <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+              <h2 className="text-lg font-bold text-indigo-900 mb-2">Copia de Seguridad</h2>
+              <p className="text-xs text-slate-500 mb-4">Gestiona tus datos localmente o en la nube.</p>
+              <DataManagement 
+                onDataChanged={fetchWeightEntries} 
+                onError={(msg) => {
+                  setError(msg);
+                  setTimeout(() => setError(null), 5000);
+                }}
+              />
+            </section>
+          </div>
+        )}
       </main>
 
-      {/* Notificación de Error */}
+      {/* Navegación Inferior */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-2 z-20 shadow-lg">
+        <NavButton 
+          active={activeView === 'home'} 
+          onClick={() => setActiveView('home')} 
+          label="Inicio"
+          icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>}
+        />
+        <NavButton 
+          active={activeView === 'history'} 
+          onClick={() => setActiveView('history')} 
+          label="Historial"
+          icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01m-.01 4h.01" /></svg>}
+        />
+        <NavButton 
+          active={activeView === 'settings'} 
+          onClick={() => setActiveView('settings')} 
+          label="Ajustes"
+          icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
+        />
+      </nav>
+
       {error && (
-        <div className="fixed bottom-4 right-4 bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl z-[60] animate-pulse">
+        <div className="fixed top-20 right-4 left-4 bg-red-600 text-white px-4 py-3 rounded-lg shadow-xl z-50 animate-bounce">
           {error}
         </div>
       )}
@@ -140,36 +170,18 @@ function App() {
           onClose={() => setEditingEntry(null)}
         />
       )}
-
-      <footer className="mt-12 text-center text-indigo-500 text-sm">
-        <p>&copy; {new Date().getFullYear()} Weight Tracker App. Todos los derechos reservados.</p>
-      </footer>
     </div>
   );
 }
 
-interface FilterButtonProps {
-  label: string;
-  period: FilterPeriod;
-  currentPeriod: FilterPeriod;
-  onClick: (period: FilterPeriod) => void;
-}
-
-const FilterButton: React.FC<FilterButtonProps> = ({ label, period, currentPeriod, onClick }) => {
-  const isActive = period === currentPeriod;
-  return (
-    <button
-      onClick={() => onClick(period)}
-      className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ease-in-out
-        ${isActive
-          ? 'bg-indigo-600 text-white shadow-md'
-          : 'bg-gray-200 text-gray-700 hover:bg-indigo-100 hover:text-indigo-700'
-        } focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2`}
-      aria-pressed={isActive}
-    >
-      {label}
-    </button>
-  );
-};
+const NavButton = ({ active, onClick, label, icon }: { active: boolean, onClick: () => void, label: string, icon: React.ReactNode }) => (
+  <button 
+    onClick={onClick}
+    className={`flex flex-col items-center justify-center w-full py-1 transition-colors ${active ? 'text-indigo-600' : 'text-slate-400'}`}
+  >
+    {icon}
+    <span className="text-[10px] font-medium mt-1">{label}</span>
+  </button>
+);
 
 export default App;

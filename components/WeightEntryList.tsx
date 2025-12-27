@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { WeightEntry } from '../types';
 
@@ -10,60 +11,45 @@ interface WeightEntryListProps {
 export const WeightEntryList: React.FC<WeightEntryListProps> = ({ weightEntries, onEditRequest, onDelete }) => {
   if (weightEntries.length === 0) {
     return (
-      <div className="flex justify-center items-center h-40 bg-gray-50 rounded-lg border border-gray-200">
-        <p className="text-gray-500 text-lg">No hay registros aún. ¡Añade tu primer peso!</p>
+      <div className="flex flex-col justify-center items-center h-64 bg-white rounded-2xl border border-dashed border-slate-300">
+        <svg className="w-12 h-12 text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01m-.01 4h.01" /></svg>
+        <p className="text-slate-400">Sin registros</p>
       </div>
     );
   }
 
-  // Ordenar por fecha descendente para mostrar los más recientes arriba
   const sortedEntries = [...weightEntries].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
-    <div className="overflow-x-auto rounded-lg shadow border border-gray-200">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Fecha
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Peso
-            </th>
-            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Acciones
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {sortedEntries.map((entry) => (
-            <tr key={entry.date} className="hover:bg-gray-50">
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {new Date(entry.date).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' })}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold">
-                {entry.weight.toFixed(1)} kg
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button
-                  onClick={() => onEditRequest(entry)}
-                  className="text-indigo-600 hover:text-indigo-900 mr-4 p-2 rounded-md hover:bg-indigo-50 transition-colors duration-200"
-                  aria-label={`Editar registro del ${entry.date}`}
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => onDelete(entry.date)}
-                  className="text-red-600 hover:text-red-900 p-2 rounded-md hover:bg-red-50 transition-colors duration-200"
-                  aria-label={`Eliminar registro del ${entry.date}`}
-                >
-                  Eliminar
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      {sortedEntries.map((entry) => (
+        <div key={entry.date} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
+          <div>
+            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">
+              {new Date(entry.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+            </p>
+            <p className="text-xl font-black text-indigo-900">
+              {entry.weight.toFixed(1)} <span className="text-sm font-normal text-slate-400">kg</span>
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onEditRequest(entry)}
+              className="p-2 text-indigo-600 bg-indigo-50 rounded-lg active:bg-indigo-100"
+              aria-label="Editar"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+            </button>
+            <button
+              onClick={() => onDelete(entry.date)}
+              className="p-2 text-red-600 bg-red-50 rounded-lg active:bg-red-100"
+              aria-label="Eliminar"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 };
