@@ -1,0 +1,5 @@
+{
+  "name": "Weight Tracker",
+  "description": "A simple application to track weight over time, allowing users to input weight for a selected date and visualize trends with various filtering options.",
+  "requestFramePermissions": []
+}
