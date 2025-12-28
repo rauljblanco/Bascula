@@ -25,19 +25,20 @@ function App() {
     const handleResize = () => {
       const landscape = window.innerWidth > window.innerHeight && window.innerWidth < 1024;
       setIsLandscape(landscape);
-      // Auto-scroll al final en modo horizontal para ver lo más reciente
+      
       if (landscape) {
+        // Pequeño retardo para asegurar que el DOM se ha renderizado con el nuevo ancho
         setTimeout(() => {
           if (landscapeScrollRef.current) {
             landscapeScrollRef.current.scrollLeft = landscapeScrollRef.current.scrollWidth;
           }
-        }, 100);
+        }, 150);
       }
     };
     window.addEventListener('resize', handleResize);
     handleResize();
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [weightEntries.length]);
 
   const fetchWeightEntries = useCallback(() => {
     try {
@@ -89,10 +90,8 @@ function App() {
     setIsMenuOpen(false);
   };
 
-  // Lógica de Predicción (Regresión Lineal sobre últimos 60 días)
   const calculateForecast = () => {
     if (weightEntries.length < 2) return null;
-    
     const sixtyDaysAgo = Date.now() - (60 * 24 * 60 * 60 * 1000);
     const recentEntries = weightEntries.filter(e => new Date(e.date).getTime() >= sixtyDaysAgo);
 
@@ -140,24 +139,34 @@ function App() {
 
   if (isLandscape) {
     return (
-      <div className="fixed inset-0 bg-white z-[100] p-2 flex flex-col overflow-hidden">
-        <div className="flex justify-between items-center px-4 py-1 bg-slate-50 border-b border-slate-200">
-          <h2 className="text-[10px] font-black text-indigo-900 uppercase tracking-tighter">Peso Tracker • Evolución</h2>
+      <div className="fixed inset-0 bg-white z-[100] flex flex-col overflow-hidden">
+        <div className="flex justify-between items-center px-4 py-2 bg-indigo-600 text-white shadow-md">
+          <h2 className="text-xs font-black uppercase tracking-widest">Peso Tracker • Panorama</h2>
           <button 
             onClick={() => setIsLandscape(false)} 
-            className="text-[10px] bg-indigo-600 text-white px-4 py-1 rounded-full font-bold uppercase active:scale-90 transition-transform"
+            className="text-[10px] bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-full font-bold uppercase transition-colors"
           >
-            Volver
+            Cerrar Vista
           </button>
         </div>
         <div 
           ref={landscapeScrollRef}
-          className="flex-grow overflow-x-auto overflow-y-hidden"
+          className="flex-grow overflow-x-auto overflow-y-hidden touch-pan-x bg-white"
+          style={{ WebkitOverflowScrolling: 'touch' }}
         >
-          {/* Si hay muchos datos, permitimos que el gráfico sea más ancho para poder deslizar */}
-          <div style={{ minWidth: weightEntries.length > 15 ? `${weightEntries.length * 30}px` : '100%' }} className="h-full pr-8">
+          {/* Forzamos un ancho mínimo basado en la cantidad de registros para asegurar el scroll lateral */}
+          <div 
+            style={{ 
+              width: `${Math.max(window.innerWidth, weightEntries.length * 50)}px`,
+              height: '100%' 
+            }} 
+            className="px-4 py-2"
+          >
             <WeightChart weightEntries={weightEntries} filterPeriod={filterPeriod} isLandscape={true} />
           </div>
+        </div>
+        <div className="bg-slate-50 border-t border-slate-200 py-1 text-center">
+          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Desliza lateralmente para ver registros anteriores</p>
         </div>
       </div>
     );
@@ -229,7 +238,6 @@ function App() {
               <p className="text-[10px] text-center text-slate-400 mt-2 italic">Gira el móvil para ver el gráfico en pantalla completa</p>
             </section>
 
-            {/* Módulo de Previsión basado en últimos 60 días */}
             <section className="bg-gradient-to-br from-indigo-600 to-violet-700 p-6 rounded-2xl shadow-lg text-white">
               <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
@@ -286,7 +294,7 @@ function App() {
                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <h2 className="text-2xl font-black text-slate-800 mb-1 uppercase tracking-tight">Peso Tracker</h2>
-            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 2.5</p>
+            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 2.5.1</p>
             <div className="space-y-4 text-slate-600">
               <div>
                 <p className="text-xs uppercase font-bold text-slate-400 tracking-widest">Autor</p>

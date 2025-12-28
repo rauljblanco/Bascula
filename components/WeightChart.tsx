@@ -73,7 +73,7 @@ export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterP
   const yAxisDomain = [Math.floor(minWeight - 1), Math.ceil(maxWeight + 1)];
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full touch-pan-x">
       {!isLandscape && weightDifference !== null && (
         <div className="text-center mb-4 text-sm font-semibold" aria-live="polite">
           <span className="text-slate-500">Cambio periodo: </span>
@@ -82,9 +82,9 @@ export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterP
           </span>
         </div>
       )}
-      <div className={isLandscape ? "h-full pt-4" : "h-72"}>
+      <div className={isLandscape ? "h-[85vh] pt-4" : "h-72"}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={filteredData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
+          <LineChart data={filteredData} margin={{ top: 10, right: 30, left: -20, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
             <XAxis
               dataKey="timestamp"
@@ -96,12 +96,12 @@ export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterP
                 return date.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
               }}
               stroke="#cbd5e1"
-              tick={{ fill: '#94a3b8', fontSize: isLandscape ? 10 : 12 }}
+              tick={{ fill: '#94a3b8', fontSize: isLandscape ? 11 : 12 }}
             />
             <YAxis
               domain={yAxisDomain}
               stroke="#cbd5e1"
-              tick={{ fill: '#94a3b8', fontSize: isLandscape ? 10 : 12 }}
+              tick={{ fill: '#94a3b8', fontSize: isLandscape ? 11 : 12 }}
               width={60}
             />
             <Tooltip
@@ -113,15 +113,18 @@ export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterP
               }}
               formatter={(value: number) => [`${value.toFixed(1)} kg`, 'Peso']}
               labelFormatter={(unixTime) => new Date(unixTime).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+              // Desactivamos el "Tooltip" que sigue al dedo para no entorpecer el scroll en modo landscape
+              // Pero lo mantenemos si es un click puntual
+              trigger={isLandscape ? 'click' : 'hover'}
             />
             <Line
               type="monotone"
               dataKey="weight"
               stroke="#4f46e5"
-              strokeWidth={isLandscape ? 4 : 3}
-              dot={{ r: isLandscape ? 3 : 4, fill: '#4f46e5', stroke: '#fff', strokeWidth: 2 }}
-              activeDot={{ r: 6, fill: '#6366f1', stroke: '#fff', strokeWidth: 2 }}
-              animationDuration={800}
+              strokeWidth={isLandscape ? 5 : 3}
+              dot={{ r: isLandscape ? 4 : 4, fill: '#4f46e5', stroke: '#fff', strokeWidth: 2 }}
+              activeDot={{ r: 7, fill: '#6366f1', stroke: '#fff', strokeWidth: 2 }}
+              animationDuration={500}
             />
           </LineChart>
         </ResponsiveContainer>
