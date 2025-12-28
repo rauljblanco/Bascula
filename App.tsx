@@ -55,9 +55,9 @@ function App() {
   }, [fetchWeightEntries]);
 
   /**
-   * Función de exportación optimizada para forzar el menú nativo de compartir.
-   * Si el sistema deniega el permiso o falla (Permission denied), recurre a la descarga normal.
-   * Se usa 'text/plain' para máxima compatibilidad al compartir archivos .json en Android.
+   * Función de exportación optimizada para Android Share Menu.
+   * Nombre de fichero: PesoTracker-YYYY-MM-DD-HH:MM.json
+   * Tipo: text/plain para evitar bloqueos de seguridad.
    */
   const handleExportMobile = useCallback(async () => {
     if (weightEntries.length === 0) {
@@ -65,8 +65,11 @@ function App() {
       return;
     }
 
+    const now = new Date();
+    const datePart = now.toISOString().split('T')[0];
+    const timePart = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
+    const fileName = `PesoTracker-${datePart}-${timePart}.json`;
     const dataStr = JSON.stringify(weightEntries, null, 2);
-    const fileName = `pesos_tracker_${new Date().toISOString().split('T')[0]}.json`;
 
     const triggerDownload = () => {
       const blob = new Blob([dataStr], { type: 'text/plain' });
@@ -85,7 +88,7 @@ function App() {
     try {
       const file = new File([dataStr], fileName, { type: 'text/plain' });
 
-      // Verificamos si el sistema permite compartir este archivo concreto
+      // Verificamos si el navegador soporta la API de compartir archivos
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
@@ -94,21 +97,20 @@ function App() {
             text: 'Mis registros de peso'
           });
         } catch (shareError) {
-          // Si el error es Permission denied o similar (no AbortError), usamos el fallback
+          // Si no es una cancelación del usuario, intentamos descarga tradicional
           if ((shareError as Error).name !== 'AbortError') {
-            console.warn("Share API falló con error, usando descarga tradicional:", shareError);
+            console.warn("Share API falló, usando descarga tradicional:", shareError);
             triggerDownload();
           }
         }
       } else {
-        // Si el navegador no soporta compartir archivos (ej. Escritorio), descarga normal
+        // Fallback para navegadores sin API de compartir (PC / Navegadores antiguos)
         triggerDownload();
       }
     } catch (e) {
-      // Captura de errores generales durante la preparación del archivo
       if ((e as Error).name !== 'AbortError') {
-        console.error("Error durante la preparación de exportación:", e);
-        triggerDownload(); // Intentamos descarga como último recurso
+        console.error("Error en la preparación de la exportación:", e);
+        triggerDownload();
       }
     }
   }, [weightEntries]);
@@ -356,7 +358,7 @@ function App() {
                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <h2 className="text-2xl font-black text-slate-800 mb-1 uppercase tracking-tight">Peso Tracker</h2>
-            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 3.1</p>
+            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 3.2</p>
             <div className="space-y-4 text-slate-600">
               <div>
                 <p className="text-xs uppercase font-bold text-slate-400 tracking-widest">Autor</p>
