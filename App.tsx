@@ -55,6 +55,44 @@ function App() {
     fetchWeightEntries();
   }, [fetchWeightEntries]);
 
+  /**
+   * Función para exportar los datos mediante descarga directa.
+   * Utiliza un Blob y un enlace invisible con el atributo 'download'.
+   */
+  const handleExportMobile = useCallback(() => {
+    if (weightEntries.length === 0) {
+      setError("No hay datos para exportar.");
+      return;
+    }
+
+    try {
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}-${pad(now.getMinutes())}`;
+      const fileName = `pesos_backup_${timestamp}.json`;
+      
+      const dataStr = JSON.stringify(weightEntries, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpieza del DOM y del objeto URL
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+    } catch (e) {
+      setError("No se pudo generar el archivo de exportación.");
+    }
+  }, [weightEntries]);
+
   const handleAddWeight = useCallback((date: string, weight: number) => {
     try {
       saveWeightEntry({ date, weight });
@@ -284,6 +322,7 @@ function App() {
               <p className="text-xs text-slate-500 mb-4">Exporta tus registros para guardarlos o impórtalos para restaurar tu progreso.</p>
               <DataManagement 
                 onDataChanged={fetchWeightEntries} 
+                onExport={handleExportMobile}
                 onError={(msg) => {
                   setError(msg);
                   setTimeout(() => setError(null), 5000);
