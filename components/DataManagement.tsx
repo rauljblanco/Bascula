@@ -19,14 +19,17 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
     setExportSuccess(false);
 
     try {
+      // Llamamos a la función de exportación que ahora tiene su propio retardo de 100ms
       onExport();
       
-      // Simular un estado de éxito visual
-      setExportSuccess(true);
+      // Simular un estado de éxito visual progresivo
       setTimeout(() => {
+        setExportSuccess(true);
         setIsExporting(false);
-        setExportSuccess(false);
-      }, 5000);
+        // Ocultar mensaje de éxito tras unos segundos
+        setTimeout(() => setExportSuccess(false), 5000);
+      }, 300); // Pequeño margen para que la animación coincida con el retardo de App.tsx
+      
     } catch (err) {
       console.error("Error en exportación:", err);
       onError("No se pudo completar la exportación.");
@@ -86,10 +89,10 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
           <div className="flex items-start gap-3">
             <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
             <div>
-              <p className="font-bold text-sm">¡Exportación iniciada!</p>
+              <p className="font-bold text-sm">¡Descarga iniciada!</p>
               <p className="text-[10px] opacity-90 leading-tight">
                 El archivo se guardará en tu carpeta de <strong>Descargas</strong>.<br/>
-                Nombre: pesos_backup_...json
+                Nombre: Peso_Tracker_...json
               </p>
             </div>
           </div>

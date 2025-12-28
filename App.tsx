@@ -57,7 +57,7 @@ function App() {
 
   /**
    * Función para exportar los datos mediante descarga directa.
-   * Utiliza un Data URL con application/octet-stream para forzar la descarga en dispositivos móviles.
+   * Modificada para máxima compatibilidad con PWA en Android.
    */
   const handleExportMobile = useCallback(() => {
     if (weightEntries.length === 0) {
@@ -74,11 +74,12 @@ function App() {
       const hour = pad(now.getHours());
       const min = pad(now.getMinutes());
       
+      // Nombre de archivo simplificado para evitar errores en Android
       const fileName = `Peso_Tracker_${year}_${month}_${day}_${hour}_${min}.json`;
       
       const dataStr = JSON.stringify(weightEntries, null, 2);
       
-      // Convertimos a Base64 para el Data URL, manejando caracteres UTF-8
+      // Convertimos a Base64 para el Data URL (MIME octet-stream para forzar descarga)
       const base64Data = btoa(unescape(encodeURIComponent(dataStr)));
       const dataUrl = `data:application/octet-stream;base64,${base64Data}`;
       
@@ -88,12 +89,18 @@ function App() {
       link.style.display = 'none';
       
       document.body.appendChild(link);
-      link.click();
       
-      // Limpieza del DOM
+      // Retardo crítico de 100ms para que el SO Android procese la intención de descarga
       setTimeout(() => {
-        document.body.removeChild(link);
-      }, 150);
+        link.click();
+        // Limpieza del DOM tras un periodo prudencial
+        setTimeout(() => {
+          if (document.body.contains(link)) {
+            document.body.removeChild(link);
+          }
+        }, 500);
+      }, 100);
+
     } catch (e) {
       console.error("Export error:", e);
       setError("No se pudo generar el archivo de exportación.");
@@ -194,7 +201,6 @@ function App() {
             Cerrar Vista
           </button>
         </div>
-        {/* Contenedor de scroll con touch-pan-x forzado */}
         <div 
           ref={landscapeScrollRef}
           className="flex-grow overflow-x-auto overflow-y-hidden bg-white"
@@ -203,7 +209,6 @@ function App() {
             touchAction: 'pan-x'
           }}
         >
-          {/* El ancho se calcula para que siempre haya espacio para deslizar si hay suficientes registros */}
           <div 
             style={{ 
               width: `${Math.max(window.innerWidth + 10, weightEntries.length * 60)}px`,
@@ -345,7 +350,7 @@ function App() {
                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <h2 className="text-2xl font-black text-slate-800 mb-1 uppercase tracking-tight">Peso Tracker</h2>
-            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 2.8</p>
+            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 2.9</p>
             <div className="space-y-4 text-slate-600">
               <div>
                 <p className="text-xs uppercase font-bold text-slate-400 tracking-widest">Autor</p>
