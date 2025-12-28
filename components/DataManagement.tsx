@@ -1,6 +1,7 @@
 
 import React, { useRef, useState } from 'react';
 import { importWeightEntries } from '../services/localStorageService';
+import { WeightEntry } from '../types';
 
 interface DataManagementProps {
   onDataChanged: () => void;
@@ -19,13 +20,10 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
     setExportSuccess(false);
 
     try {
-      // Llamada a la función de exportación
       await onExport();
-      
       setExportSuccess(true);
       setIsExporting(false);
       setTimeout(() => setExportSuccess(false), 5000);
-      
     } catch (err) {
       console.error("Error en exportación:", err);
       onError("No se pudo completar la exportación.");
@@ -38,18 +36,47 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const content = e.target?.result as string;
-        const importedData = JSON.parse(content);
-        if (!Array.isArray(importedData)) throw new Error("Formato inválido.");
+        let importedData: WeightEntry[] = [];
+
+        // Detectar si es JSON o CSV
+        if (content.trim().startsWith('[') || content.trim().startsWith('{')) {
+          // Es JSON
+          const parsed = JSON.parse(content);
+          if (!Array.isArray(parsed)) throw new Error("Formato JSON inválido.");
+          importedData = parsed;
+        } else {
+          // Intentar parsear como CSV
+          const lines = content.split(/\r?\n/);
+          // Omitir cabecera si existe
+          const startIdx = (lines[0].toLowerCase().includes('fecha') || lines[0].toLowerCase().includes('date')) ? 1 : 0;
+          
+          importedData = lines.slice(startIdx)
+            .filter(line => line.trim() !== '')
+            .map(line => {
+              const parts = line.split(',');
+              if (parts.length < 2) return null;
+              const date = parts[0].trim();
+              const weight = parseFloat(parts[1].trim());
+              if (!date || isNaN(weight)) return null;
+              return { date, weight };
+            })
+            .filter((entry): entry is WeightEntry => entry !== null);
+            
+          if (importedData.length === 0) throw new Error("No se encontraron registros válidos en el CSV.");
+        }
+
         importWeightEntries(importedData);
         onDataChanged();
         if (fileInputRef.current) fileInputRef.current.value = '';
         alert("¡Datos importados con éxito!");
       } catch (err) {
-        onError("El archivo seleccionado no es un respaldo válido.");
+        console.error("Error al importar:", err);
+        onError("El archivo seleccionado no es un respaldo válido (.json o .csv).");
       }
     };
     reader.readAsText(file);
@@ -68,7 +95,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
           ) : (
             <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
           )}
-          <span className="text-sm font-bold">Exportar</span>
+          <span className="text-sm font-bold">Exportar CSV</span>
         </button>
         
         <button
@@ -87,14 +114,20 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
             <div>
               <p className="font-bold text-sm">Copia gestionada</p>
               <p className="text-[10px] opacity-90 leading-tight">
-                Se ha abierto el menú de compartir/guardar de tu dispositivo.
+                Se ha generado el archivo .csv y se ha abierto el menú de compartir.
               </p>
             </div>
           </div>
         </div>
       )}
 
-      <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileChange} 
+        accept=".json,.csv" 
+        className="hidden" 
+      />
     </div>
   );
 };

@@ -56,8 +56,8 @@ function App() {
 
   /**
    * Función de exportación optimizada para Android Share Menu.
-   * Nombre de fichero: PesoTracker-YYYY-MM-DD-HH:MM.json
-   * Tipo: text/plain para evitar bloqueos de seguridad.
+   * Formato: CSV (Comma Separated Values)
+   * Nombre de fichero: PesoTracker-YYYY-MM-DD-HH:MM.csv
    */
   const handleExportMobile = useCallback(async () => {
     if (weightEntries.length === 0) {
@@ -67,12 +67,18 @@ function App() {
 
     const now = new Date();
     const datePart = now.toISOString().split('T')[0];
-    const timePart = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
-    const fileName = `PesoTracker-${datePart}-${timePart}.json`;
-    const dataStr = JSON.stringify(weightEntries, null, 2);
+    const timePart = now.toTimeString().split(' ')[0].substring(0, 5).replace(':', '-'); // HH-MM
+    const fileName = `PesoTracker-${datePart}-${timePart}.csv`;
+    
+    // Generar contenido CSV
+    const headers = "Fecha,Peso\n";
+    const csvContent = weightEntries
+      .map(e => `${e.date},${e.weight}`)
+      .join('\n');
+    const dataStr = headers + csvContent;
 
     const triggerDownload = () => {
-      const blob = new Blob([dataStr], { type: 'text/plain' });
+      const blob = new Blob([dataStr], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -86,25 +92,23 @@ function App() {
     };
 
     try {
+      // Usamos text/plain en el File para maximizar compatibilidad con el menú compartir de Android
       const file = new File([dataStr], fileName, { type: 'text/plain' });
 
-      // Verificamos si el navegador soporta la API de compartir archivos
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
             files: [file],
             title: 'Copia de Seguridad Peso Tracker',
-            text: 'Mis registros de peso'
+            text: 'Mis registros de peso (Formato CSV)'
           });
         } catch (shareError) {
-          // Si no es una cancelación del usuario, intentamos descarga tradicional
           if ((shareError as Error).name !== 'AbortError') {
             console.warn("Share API falló, usando descarga tradicional:", shareError);
             triggerDownload();
           }
         }
       } else {
-        // Fallback para navegadores sin API de compartir (PC / Navegadores antiguos)
         triggerDownload();
       }
     } catch (e) {
@@ -358,7 +362,7 @@ function App() {
                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <h2 className="text-2xl font-black text-slate-800 mb-1 uppercase tracking-tight">Peso Tracker</h2>
-            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 3.2</p>
+            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 3.3</p>
             <div className="space-y-4 text-slate-600">
               <div>
                 <p className="text-xs uppercase font-bold text-slate-400 tracking-widest">Autor</p>
