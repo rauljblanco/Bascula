@@ -55,8 +55,10 @@ function App() {
   }, [fetchWeightEntries]);
 
   /**
-   * Función de exportación optimizada para Android PWA usando Web Share API.
-   * Evita el cierre forzado en Android instalado.
+   * Función de exportación robusta.
+   * Intenta usar Web Share API para una mejor experiencia móvil.
+   * Si el navegador deniega el permiso o no es compatible, cae automáticamente 
+   * a la descarga tradicional por enlace (blob).
    */
   const handleExportMobile = useCallback(async () => {
     if (weightEntries.length === 0) {
@@ -64,38 +66,58 @@ function App() {
       return;
     }
 
-    try {
-      const dataStr = JSON.stringify(weightEntries, null, 2);
-      const fileName = `pesos_tracker_${new Date().toISOString().split('T')[0]}.json`;
-      
-      // Creamos un archivo real en memoria
-      const file = new File([dataStr], fileName, { type: 'application/json' });
+    const dataStr = JSON.stringify(weightEntries, null, 2);
+    const fileName = `pesos_tracker_${new Date().toISOString().split('T')[0]}.json`;
 
-      // Comprobamos si el móvil permite compartir archivos
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'Copia de Seguridad Peso Tracker',
-          text: 'Aquí tienes tu copia de seguridad de registros de peso.'
-        });
-      } else {
-        // Plan B: Descarga tradicional como plan B
-        const blob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 100);
+    // Función interna para realizar la descarga tradicional
+    const triggerDownloadFallback = () => {
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 150);
+    };
+
+    try {
+      // Comprobar soporte básico de Share API
+      if (navigator.share && navigator.canShare) {
+        const file = new File([dataStr], fileName, { type: 'application/json' });
+        
+        // Comprobar si este tipo de archivo se puede compartir
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Copia de Seguridad Peso Tracker',
+            text: 'Mis registros de peso'
+          });
+          return; // Compartido con éxito
+        }
       }
+      
+      // Si no hay soporte o canShare es false, usamos el fallback directamente
+      triggerDownloadFallback();
+      
     } catch (e) {
-      console.error("Error al exportar:", e);
-      if ((e as Error).name !== 'AbortError') {
-        setError("No se pudo completar la exportación.");
+      const err = e as Error;
+      
+      // Si el usuario canceló el diálogo nativo, no hacemos nada
+      if (err.name === 'AbortError') return;
+
+      // Si falló por "Permission denied" u otros motivos, intentamos el fallback como última opción
+      console.warn("Fallo en navigator.share (posible falta de permisos). Intentando descarga tradicional.", err);
+      
+      try {
+        triggerDownloadFallback();
+      } catch (fallbackError) {
+        console.error("Error crítico: Falló incluso la descarga tradicional.", fallbackError);
+        setError("No se pudo completar la exportación de ninguna forma.");
       }
     }
   }, [weightEntries]);
