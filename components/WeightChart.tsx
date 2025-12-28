@@ -6,16 +6,15 @@ import { WeightEntry, FilterPeriod } from '../types';
 interface WeightChartProps {
   weightEntries: WeightEntry[];
   filterPeriod: FilterPeriod;
+  isLandscape?: boolean;
 }
 
-export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterPeriod }) => {
+export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterPeriod, isLandscape = false }) => {
   const [filteredData, setFilteredData] = useState<WeightEntry[]>([]);
   const [weightDifference, setWeightDifference] = useState<number | null>(null);
 
   const filterData = useCallback((entries: WeightEntry[], period: FilterPeriod): WeightEntry[] => {
-    if (entries.length === 0) {
-      return [];
-    }
+    if (entries.length === 0) return [];
 
     const today = new Date();
     today.setHours(0, 0, 0, 0); 
@@ -71,37 +70,22 @@ export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterP
 
   const minWeight = filteredData.length > 0 ? Math.min(...filteredData.map(entry => entry.weight)) : 0;
   const maxWeight = filteredData.length > 0 ? Math.max(...filteredData.map(entry => entry.weight)) : 100;
-  const yAxisDomain = [Math.floor(minWeight - 2), Math.ceil(maxWeight + 2)];
-
-  const getDifferenceColor = (diff: number | null) => {
-    if (diff === null) return 'text-gray-600';
-    if (diff > 0) return 'text-red-600';
-    if (diff < 0) return 'text-green-600';
-    return 'text-gray-600';
-  };
+  const yAxisDomain = [Math.floor(minWeight - 1), Math.ceil(maxWeight + 1)];
 
   return (
-    <div className="w-full">
-      {weightDifference !== null && (
-        <div className="text-center mb-4 text-lg font-semibold" aria-live="polite">
-          <span className="text-gray-700">Cambio de Peso: </span>
-          <span className={getDifferenceColor(weightDifference)}>
-            {weightDifference > 0 ? '+' : ''}{weightDifference.toFixed(1)} kg
+    <div className="w-full h-full">
+      {!isLandscape && weightDifference !== null && (
+        <div className="text-center mb-4 text-sm font-semibold" aria-live="polite">
+          <span className="text-slate-500">Cambio periodo: </span>
+          <span className={weightDifference > 0 ? 'text-rose-600' : 'text-emerald-600'}>
+            {weightDifference > 0 ? '▲' : '▼'} {Math.abs(weightDifference).toFixed(1)} kg
           </span>
         </div>
       )}
-      <div className="h-80 sm:h-96">
+      <div className={isLandscape ? "h-full pt-4" : "h-72"}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={filteredData}
-            margin={{
-              top: 5,
-              right: 10,
-              left: 0,
-              bottom: 5,
-            }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" vertical={false} />
+          <LineChart data={filteredData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
             <XAxis
               dataKey="timestamp"
               type="number"
@@ -111,37 +95,33 @@ export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterP
                 const date = new Date(unixTime);
                 return date.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
               }}
-              angle={-30}
-              textAnchor="end"
-              height={60}
-              stroke="#6b7280"
-              tick={{ fill: '#6b7280', fontSize: 12 }}
+              stroke="#cbd5e1"
+              tick={{ fill: '#94a3b8', fontSize: isLandscape ? 10 : 12 }}
             />
             <YAxis
               domain={yAxisDomain}
-              stroke="#6b7280"
-              tick={{ fill: '#6b7280', fontSize: 12 }}
-              tickFormatter={(value) => `${value}`}
-              width={40}
+              stroke="#cbd5e1"
+              tick={{ fill: '#94a3b8', fontSize: isLandscape ? 10 : 12 }}
+              width={60}
             />
             <Tooltip
-              contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', border: '1px solid #e0e0e0', borderRadius: '8px' }}
-              labelStyle={{ color: '#374151', fontWeight: 'bold' }}
-              itemStyle={{ color: '#4f46e5' }}
-              formatter={(value: number) => [`${value.toFixed(1)} kg`, 'Peso']}
-              labelFormatter={(unixTime) => {
-                const date = new Date(unixTime);
-                return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' });
+              contentStyle={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.96)', 
+                border: 'none', 
+                borderRadius: '12px',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
               }}
+              formatter={(value: number) => [`${value.toFixed(1)} kg`, 'Peso']}
+              labelFormatter={(unixTime) => new Date(unixTime).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
             />
             <Line
               type="monotone"
               dataKey="weight"
               stroke="#4f46e5"
-              strokeWidth={3}
-              dot={{ r: 4, fill: '#4f46e5', stroke: '#fff', strokeWidth: 2 }}
+              strokeWidth={isLandscape ? 4 : 3}
+              dot={{ r: isLandscape ? 3 : 4, fill: '#4f46e5', stroke: '#fff', strokeWidth: 2 }}
               activeDot={{ r: 6, fill: '#6366f1', stroke: '#fff', strokeWidth: 2 }}
-              animationDuration={1000}
+              animationDuration={800}
             />
           </LineChart>
         </ResponsiveContainer>

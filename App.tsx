@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { WeightEntry, FilterPeriod } from './types';
 import { getWeightEntries, saveWeightEntry, deleteWeightEntry } from './services/localStorageService';
 import { WeightInputForm } from './components/WeightInputForm';
@@ -19,10 +19,20 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [editingEntry, setEditingEntry] = useState<WeightEntry | null>(null);
   const [isLandscape, setIsLandscape] = useState(false);
+  const landscapeScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleResize = () => {
-      setIsLandscape(window.innerWidth > window.innerHeight && window.innerWidth < 1024);
+      const landscape = window.innerWidth > window.innerHeight && window.innerWidth < 1024;
+      setIsLandscape(landscape);
+      // Auto-scroll al final en modo horizontal para ver lo más reciente
+      if (landscape) {
+        setTimeout(() => {
+          if (landscapeScrollRef.current) {
+            landscapeScrollRef.current.scrollLeft = landscapeScrollRef.current.scrollWidth;
+          }
+        }, 100);
+      }
     };
     window.addEventListener('resize', handleResize);
     handleResize();
@@ -83,11 +93,9 @@ function App() {
   const calculateForecast = () => {
     if (weightEntries.length < 2) return null;
     
-    // Filtrar registros de los últimos 60 días para tendencia actual
     const sixtyDaysAgo = Date.now() - (60 * 24 * 60 * 60 * 1000);
     const recentEntries = weightEntries.filter(e => new Date(e.date).getTime() >= sixtyDaysAgo);
 
-    // Necesitamos al menos 2 puntos en los últimos 60 días para una tendencia "actual"
     if (recentEntries.length < 2) return { error: "Faltan datos recientes (60d)" };
 
     const data = recentEntries.map(e => ({
@@ -104,7 +112,10 @@ function App() {
       sumXX += p.x * p.x;
     });
 
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const denominator = (n * sumXX - sumX * sumX);
+    if (denominator === 0) return { error: "Datos insuficientes para tendencia" };
+
+    const slope = (n * sumXY - sumX * sumY) / denominator;
     const intercept = (sumY - slope * sumX) / n;
 
     const oneMonthInMs = 30 * 24 * 60 * 60 * 1000;
@@ -129,17 +140,25 @@ function App() {
 
   if (isLandscape) {
     return (
-      <div className="fixed inset-0 bg-white z-[100] p-4 flex flex-col">
-        <div className="flex justify-between items-center mb-2">
-          <h2 className="text-sm font-bold text-indigo-600 uppercase tracking-widest">Vista Panorámica</h2>
-          <button onClick={() => setIsLandscape(false)} className="text-xs bg-slate-100 px-3 py-1 rounded-full font-bold">Cerrar</button>
+      <div className="fixed inset-0 bg-white z-[100] p-2 flex flex-col overflow-hidden">
+        <div className="flex justify-between items-center px-4 py-1 bg-slate-50 border-b border-slate-200">
+          <h2 className="text-[10px] font-black text-indigo-900 uppercase tracking-tighter">Peso Tracker • Evolución</h2>
+          <button 
+            onClick={() => setIsLandscape(false)} 
+            className="text-[10px] bg-indigo-600 text-white px-4 py-1 rounded-full font-bold uppercase active:scale-90 transition-transform"
+          >
+            Volver
+          </button>
         </div>
-        <div className="flex-grow overflow-x-auto">
-          <div style={{ minWidth: weightEntries.length > 10 ? `${weightEntries.length * 40}px` : '100%' }} className="h-full">
-            <WeightChart weightEntries={weightEntries} filterPeriod={filterPeriod} />
+        <div 
+          ref={landscapeScrollRef}
+          className="flex-grow overflow-x-auto overflow-y-hidden"
+        >
+          {/* Si hay muchos datos, permitimos que el gráfico sea más ancho para poder deslizar */}
+          <div style={{ minWidth: weightEntries.length > 15 ? `${weightEntries.length * 30}px` : '100%' }} className="h-full pr-8">
+            <WeightChart weightEntries={weightEntries} filterPeriod={filterPeriod} isLandscape={true} />
           </div>
         </div>
-        <p className="text-[10px] text-center text-slate-400 mt-2">Desliza para ver fechas anteriores</p>
       </div>
     );
   }
@@ -207,6 +226,7 @@ function App() {
                 </select>
               </div>
               <WeightChart weightEntries={weightEntries} filterPeriod={filterPeriod} />
+              <p className="text-[10px] text-center text-slate-400 mt-2 italic">Gira el móvil para ver el gráfico en pantalla completa</p>
             </section>
 
             {/* Módulo de Previsión basado en últimos 60 días */}
@@ -226,7 +246,7 @@ function App() {
               ) : (
                 <p className="text-sm opacity-80">
                   {forecast && 'error' in (forecast as any) 
-                    ? "Necesitas al menos 2 registros en los últimos 60 días para ver la tendencia actual." 
+                    ? (forecast as any).error 
                     : "Introduce datos para calcular tu tendencia."}
                 </p>
               )}

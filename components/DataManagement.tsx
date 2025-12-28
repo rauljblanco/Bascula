@@ -31,11 +31,14 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
     const hour = String(now.getHours()).padStart(2, '0');
     const min = String(now.getMinutes()).padStart(2, '0');
     
+    // Nomenclatura exacta solicitada: Peso_Tracker_%año_%mes_%dia_%hora
     const fileName = `Peso_Tracker_${year}_${month}_${day}_${hour}_${min}.json`;
     const dataStr = JSON.stringify(entries, null, 2);
 
+    // Detección de móvil para evitar showSaveFilePicker (que siempre pregunta)
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
+    // En PC (no móvil), intentamos la API moderna si está disponible
     if (!isMobile && 'showSaveFilePicker' in window) {
       try {
         const handle = await (window as any).showSaveFilePicker({
@@ -59,7 +62,8 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
       }
     }
 
-    // Fallback Robusto
+    // MÉTODO FORZADO (Móviles y Fallback): Usa el enlace con atributo download
+    // En la mayoría de Androids con Chrome, esto inicia la descarga directa si el nombre es sugerido
     try {
       const blob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -67,23 +71,23 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
       const link = document.createElement('a');
       link.href = url;
       link.download = fileName;
-      link.style.visibility = 'hidden';
-      link.style.position = 'absolute';
-      link.target = '_blank';
       
+      // Aseguramos que el link esté en el DOM para mayor compatibilidad
       document.body.appendChild(link);
       link.click();
       
+      // Esperamos un poco antes de limpiar para que el navegador procese la descarga
       setTimeout(() => {
         if (document.body.contains(link)) document.body.removeChild(link);
         URL.revokeObjectURL(url);
         setIsExporting(false);
         setExportSuccess(true);
         // Ocultar mensaje de éxito tras unos segundos
-        setTimeout(() => setExportSuccess(false), 6000);
+        setTimeout(() => setExportSuccess(false), 8000);
       }, 500);
 
     } catch (err) {
+      console.error("Error en exportación:", err);
       onError("Error al generar el archivo. Inténtalo de nuevo.");
       setIsExporting(false);
     }
@@ -137,11 +141,17 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
       </div>
 
       {exportSuccess && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg animate-in fade-in slide-in-from-top-2">
-          <p className="text-emerald-700 text-xs font-bold leading-tight">
-            ✅ ¡Copia guardada con éxito!<br/>
-            Busca el archivo en tu <span className="underline">carpeta de descargas</span>.
-          </p>
+        <div className="p-4 bg-emerald-600 text-white rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-2">
+          <div className="flex items-start gap-3">
+            <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+            <div>
+              <p className="font-bold text-sm">¡Archivo guardado!</p>
+              <p className="text-[10px] opacity-90 leading-tight">
+                El archivo se ha descargado automáticamente.<br/>
+                Búscalo en tu carpeta de <strong>Descargas</strong> del dispositivo.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
