@@ -57,7 +57,7 @@ function App() {
 
   /**
    * Función para exportar los datos mediante descarga directa.
-   * Utiliza un Blob y un enlace invisible con el atributo 'download'.
+   * Utiliza un Data URL con application/octet-stream para forzar la descarga en dispositivos móviles.
    */
   const handleExportMobile = useCallback(() => {
     if (weightEntries.length === 0) {
@@ -68,27 +68,34 @@ function App() {
     try {
       const now = new Date();
       const pad = (n: number) => String(n).padStart(2, '0');
-      const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}-${pad(now.getMinutes())}`;
-      const fileName = `pesos_backup_${timestamp}.json`;
+      const year = now.getFullYear();
+      const month = pad(now.getMonth() + 1);
+      const day = pad(now.getDate());
+      const hour = pad(now.getHours());
+      const min = pad(now.getMinutes());
+      
+      const fileName = `Peso_Tracker_${year}_${month}_${day}_${hour}_${min}.json`;
       
       const dataStr = JSON.stringify(weightEntries, null, 2);
-      const blob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
+      
+      // Convertimos a Base64 para el Data URL, manejando caracteres UTF-8
+      const base64Data = btoa(unescape(encodeURIComponent(dataStr)));
+      const dataUrl = `data:application/octet-stream;base64,${base64Data}`;
       
       const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
+      link.href = dataUrl;
+      link.setAttribute('download', fileName);
       link.style.display = 'none';
       
       document.body.appendChild(link);
       link.click();
       
-      // Limpieza del DOM y del objeto URL
+      // Limpieza del DOM
       setTimeout(() => {
         document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }, 100);
+      }, 150);
     } catch (e) {
+      console.error("Export error:", e);
       setError("No se pudo generar el archivo de exportación.");
     }
   }, [weightEntries]);
@@ -338,7 +345,7 @@ function App() {
                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <h2 className="text-2xl font-black text-slate-800 mb-1 uppercase tracking-tight">Peso Tracker</h2>
-            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 2.7</p>
+            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 2.8</p>
             <div className="space-y-4 text-slate-600">
               <div>
                 <p className="text-xs uppercase font-bold text-slate-400 tracking-widest">Autor</p>
