@@ -26,7 +26,12 @@ export const WeightEntryList: React.FC<WeightEntryListProps> = ({ weightEntries,
         <div key={entry.date} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
           <div>
             <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">
-              {new Date(entry.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+              {new Date(entry.date).toLocaleDateString('es-ES', { 
+                weekday: 'short', 
+                day: 'numeric', 
+                month: 'short',
+                year: 'numeric' 
+              })}
             </p>
             <p className="text-xl font-black text-indigo-900">
               {entry.weight.toFixed(1)} <span className="text-sm font-normal text-slate-400">kg</span>

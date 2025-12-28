@@ -1,5 +1,5 @@
 {
-  "name": "Weight Tracker",
-  "description": "A simple application to track weight over time, allowing users to input weight for a selected date and visualize trends with various filtering options.",
+  "name": "Peso Tracker",
+  "description": "Una aplicación sencilla para seguir el peso a lo largo del tiempo, permitiendo introducir datos y visualizar tendencias.",
   "requestFramePermissions": []
 }

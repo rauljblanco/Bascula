@@ -8,7 +8,7 @@ import { WeightEntryList } from './components/WeightEntryList';
 import { EditWeightModal } from './components/EditWeightModal';
 import { DataManagement } from './components/DataManagement';
 
-type View = 'home' | 'history' | 'backup';
+type View = 'home' | 'history' | 'backup' | 'about';
 
 function App() {
   const [activeView, setActiveView] = useState<View>('home');
@@ -18,6 +18,16 @@ function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [editingEntry, setEditingEntry] = useState<WeightEntry | null>(null);
+  const [isLandscape, setIsLandscape] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight && window.innerWidth < 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    handleResize();
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchWeightEntries = useCallback(() => {
     try {
@@ -69,6 +79,46 @@ function App() {
     setIsMenuOpen(false);
   };
 
+  // Lógica de Predicción (Regresión Lineal sobre últimos 60 días)
+  const calculateForecast = () => {
+    if (weightEntries.length < 2) return null;
+    
+    // Filtrar registros de los últimos 60 días para tendencia actual
+    const sixtyDaysAgo = Date.now() - (60 * 24 * 60 * 60 * 1000);
+    const recentEntries = weightEntries.filter(e => new Date(e.date).getTime() >= sixtyDaysAgo);
+
+    // Necesitamos al menos 2 puntos en los últimos 60 días para una tendencia "actual"
+    if (recentEntries.length < 2) return { error: "Faltan datos recientes (60d)" };
+
+    const data = recentEntries.map(e => ({
+      x: new Date(e.date).getTime(),
+      y: e.weight
+    }));
+
+    const n = data.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+    data.forEach(p => {
+      sumX += p.x;
+      sumY += p.y;
+      sumXY += p.x * p.y;
+      sumXX += p.x * p.x;
+    });
+
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+
+    const oneMonthInMs = 30 * 24 * 60 * 60 * 1000;
+    const futureTime = Date.now() + oneMonthInMs;
+    const predictedWeight = slope * futureTime + intercept;
+    
+    return {
+      weight: predictedWeight,
+      trend: slope * oneMonthInMs
+    };
+  };
+
+  const forecast = calculateForecast();
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-indigo-50">
@@ -77,9 +127,25 @@ function App() {
     );
   }
 
+  if (isLandscape) {
+    return (
+      <div className="fixed inset-0 bg-white z-[100] p-4 flex flex-col">
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-sm font-bold text-indigo-600 uppercase tracking-widest">Vista Panorámica</h2>
+          <button onClick={() => setIsLandscape(false)} className="text-xs bg-slate-100 px-3 py-1 rounded-full font-bold">Cerrar</button>
+        </div>
+        <div className="flex-grow overflow-x-auto">
+          <div style={{ minWidth: weightEntries.length > 10 ? `${weightEntries.length * 40}px` : '100%' }} className="h-full">
+            <WeightChart weightEntries={weightEntries} filterPeriod={filterPeriod} />
+          </div>
+        </div>
+        <p className="text-[10px] text-center text-slate-400 mt-2">Desliza para ver fechas anteriores</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      {/* Header con botón de menú */}
       <header className="bg-indigo-600 text-white p-4 shadow-md sticky top-0 z-40 flex justify-between items-center">
         <button 
           onClick={() => setIsMenuOpen(true)}
@@ -94,49 +160,25 @@ function App() {
           {activeView === 'home' && 'Mi Progreso'}
           {activeView === 'history' && 'Historial'}
           {activeView === 'backup' && 'Copia de seguridad'}
+          {activeView === 'about' && 'Acerca de...'}
         </h1>
         <div className="w-10"></div>
       </header>
 
-      {/* Menú Lateral (Drawer) */}
       <div className={`fixed inset-0 z-50 transition-opacity duration-300 ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <div 
-          className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
-          onClick={() => setIsMenuOpen(false)}
-        ></div>
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}></div>
         <div className={`absolute top-0 left-0 h-full w-64 bg-white shadow-2xl transition-transform duration-300 transform ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="p-6">
+          <div className="p-6 h-full flex flex-col">
             <div className="flex justify-between items-center mb-8">
-              <span className="text-indigo-900 font-black text-xl tracking-tighter">PESO TRACKER</span>
-              <button 
-                onClick={() => setIsMenuOpen(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <span className="text-indigo-900 font-black text-xl tracking-tighter uppercase">Peso Tracker</span>
+              <button onClick={() => setIsMenuOpen(false)} className="text-slate-400"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             
-            <nav className="space-y-2">
-              <MenuButton 
-                active={activeView === 'home'} 
-                onClick={() => navigateTo('home')} 
-                label="Inicio"
-                icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>}
-              />
-              <MenuButton 
-                active={activeView === 'history'} 
-                onClick={() => navigateTo('history')} 
-                label="Historial"
-                icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01m-.01 4h.01" /></svg>}
-              />
-              <MenuButton 
-                active={activeView === 'backup'} 
-                onClick={() => navigateTo('backup')} 
-                label="Copia de seguridad"
-                icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>}
-              />
+            <nav className="space-y-2 flex-grow">
+              <MenuButton active={activeView === 'home'} onClick={() => navigateTo('home')} label="Inicio" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>} />
+              <MenuButton active={activeView === 'history'} onClick={() => navigateTo('history')} label="Historial" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>} />
+              <MenuButton active={activeView === 'backup'} onClick={() => navigateTo('backup')} label="Copia de seguridad" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>} />
+              <MenuButton active={activeView === 'about'} onClick={() => navigateTo('about')} label="Acerca de..." icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
             </nav>
           </div>
         </div>
@@ -156,7 +198,7 @@ function App() {
                 <select 
                   value={filterPeriod} 
                   onChange={(e) => setFilterPeriod(e.target.value as FilterPeriod)}
-                  className="bg-indigo-50 border-none text-indigo-700 text-sm rounded-lg p-1 focus:ring-0"
+                  className="bg-indigo-50 border-none text-indigo-700 text-sm rounded-lg p-1"
                 >
                   <option value={FilterPeriod.MONTH}>Mes</option>
                   <option value={FilterPeriod.THREE_MONTHS}>3 Meses</option>
@@ -165,6 +207,29 @@ function App() {
                 </select>
               </div>
               <WeightChart weightEntries={weightEntries} filterPeriod={filterPeriod} />
+            </section>
+
+            {/* Módulo de Previsión basado en últimos 60 días */}
+            <section className="bg-gradient-to-br from-indigo-600 to-violet-700 p-6 rounded-2xl shadow-lg text-white">
+              <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                Tendencia actual (60d)
+              </h2>
+              {forecast && !('error' in forecast) ? (
+                <div>
+                  <p className="text-3xl font-black mb-1">{(forecast as any).weight.toFixed(1)} <span className="text-sm font-normal opacity-80">kg</span></p>
+                  <p className={`text-xs font-bold uppercase tracking-wider ${(forecast as any).trend > 0 ? 'text-rose-200' : 'text-emerald-200'}`}>
+                    {(forecast as any).trend > 0 ? 'Tendencia al alza' : 'Tendencia a la baja'} ({(forecast as any).trend > 0 ? '+' : ''}{(forecast as any).trend.toFixed(1)} kg/mes)
+                  </p>
+                  <p className="mt-4 text-[10px] opacity-60 leading-tight italic">* Previsión a 30 días basada en tus registros de los últimos 2 meses.</p>
+                </div>
+              ) : (
+                <p className="text-sm opacity-80">
+                  {forecast && 'error' in (forecast as any) 
+                    ? "Necesitas al menos 2 registros en los últimos 60 días para ver la tendencia actual." 
+                    : "Introduce datos para calcular tu tendencia."}
+                </p>
+              )}
             </section>
           </div>
         )}
@@ -192,6 +257,23 @@ function App() {
                 }}
               />
             </section>
+          </div>
+        )}
+
+        {activeView === 'about' && (
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-center animate-in zoom-in-95 duration-300">
+            <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600">
+               <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <h2 className="text-2xl font-black text-slate-800 mb-1 uppercase tracking-tight">Peso Tracker</h2>
+            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 2.4</p>
+            <div className="space-y-4 text-slate-600">
+              <div>
+                <p className="text-xs uppercase font-bold text-slate-400 tracking-widest">Autor</p>
+                <p className="text-lg font-bold">Raúl Jaime</p>
+              </div>
+              <p className="text-sm pt-4 border-t border-slate-50 italic">Tu compañero diario para el control de bienestar.</p>
+            </div>
           </div>
         )}
       </main>
