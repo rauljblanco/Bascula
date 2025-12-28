@@ -286,7 +286,7 @@ function App() {
                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <h2 className="text-2xl font-black text-slate-800 mb-1 uppercase tracking-tight">Peso Tracker</h2>
-            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 2.4</p>
+            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 2.5</p>
             <div className="space-y-4 text-slate-600">
               <div>
                 <p className="text-xs uppercase font-bold text-slate-400 tracking-widest">Autor</p>
