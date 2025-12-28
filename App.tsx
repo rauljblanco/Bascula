@@ -55,10 +55,8 @@ function App() {
   }, [fetchWeightEntries]);
 
   /**
-   * Función de exportación robusta.
-   * Intenta usar Web Share API para una mejor experiencia móvil.
-   * Si el navegador deniega el permiso o no es compatible, cae automáticamente 
-   * a la descarga tradicional por enlace (blob).
+   * Función de exportación optimizada para forzar el menú nativo de compartir.
+   * Si el sistema deniega el permiso o falla (Permission denied), recurre a la descarga normal.
    */
   const handleExportMobile = useCallback(async () => {
     if (weightEntries.length === 0) {
@@ -69,8 +67,7 @@ function App() {
     const dataStr = JSON.stringify(weightEntries, null, 2);
     const fileName = `pesos_tracker_${new Date().toISOString().split('T')[0]}.json`;
 
-    // Función interna para realizar la descarga tradicional
-    const triggerDownloadFallback = () => {
+    const triggerDownload = () => {
       const blob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -78,7 +75,6 @@ function App() {
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
-      
       setTimeout(() => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
@@ -86,38 +82,32 @@ function App() {
     };
 
     try {
-      // Comprobar soporte básico de Share API
-      if (navigator.share && navigator.canShare) {
-        const file = new File([dataStr], fileName, { type: 'application/json' });
-        
-        // Comprobar si este tipo de archivo se puede compartir
-        if (navigator.canShare({ files: [file] })) {
+      const file = new File([dataStr], fileName, { type: 'application/json' });
+
+      // Verificamos si el sistema permite compartir este archivo concreto
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
           await navigator.share({
             files: [file],
             title: 'Copia de Seguridad Peso Tracker',
             text: 'Mis registros de peso'
           });
-          return; // Compartido con éxito
+        } catch (shareError) {
+          // Si el error es Permission denied o similar (no AbortError), usamos el fallback
+          if ((shareError as Error).name !== 'AbortError') {
+            console.warn("Share API falló con error, usando descarga tradicional:", shareError);
+            triggerDownload();
+          }
         }
+      } else {
+        // Si el navegador no soporta compartir archivos (ej. Escritorio), descarga normal
+        triggerDownload();
       }
-      
-      // Si no hay soporte o canShare es false, usamos el fallback directamente
-      triggerDownloadFallback();
-      
     } catch (e) {
-      const err = e as Error;
-      
-      // Si el usuario canceló el diálogo nativo, no hacemos nada
-      if (err.name === 'AbortError') return;
-
-      // Si falló por "Permission denied" u otros motivos, intentamos el fallback como última opción
-      console.warn("Fallo en navigator.share (posible falta de permisos). Intentando descarga tradicional.", err);
-      
-      try {
-        triggerDownloadFallback();
-      } catch (fallbackError) {
-        console.error("Error crítico: Falló incluso la descarga tradicional.", fallbackError);
-        setError("No se pudo completar la exportación de ninguna forma.");
+      // Captura de errores generales durante la preparación del archivo
+      if ((e as Error).name !== 'AbortError') {
+        console.error("Error durante la preparación de exportación:", e);
+        triggerDownload(); // Intentamos descarga como último recurso
       }
     }
   }, [weightEntries]);
@@ -365,7 +355,7 @@ function App() {
                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <h2 className="text-2xl font-black text-slate-800 mb-1 uppercase tracking-tight">Peso Tracker</h2>
-            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 2.9</p>
+            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 3.0</p>
             <div className="space-y-4 text-slate-600">
               <div>
                 <p className="text-xs uppercase font-bold text-slate-400 tracking-widest">Autor</p>
