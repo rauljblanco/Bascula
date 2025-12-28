@@ -27,18 +27,18 @@ function App() {
       setIsLandscape(landscape);
       
       if (landscape) {
-        // Pequeño retardo para asegurar que el DOM se ha renderizado con el nuevo ancho
+        // Retardo para asegurar que el layout se ha ajustado antes de scrollear al final
         setTimeout(() => {
           if (landscapeScrollRef.current) {
             landscapeScrollRef.current.scrollLeft = landscapeScrollRef.current.scrollWidth;
           }
-        }, 150);
+        }, 200);
       }
     };
     window.addEventListener('resize', handleResize);
     handleResize();
     return () => window.removeEventListener('resize', handleResize);
-  }, [weightEntries.length]);
+  }, [weightEntries.length, activeView]);
 
   const fetchWeightEntries = useCallback(() => {
     try {
@@ -149,16 +149,21 @@ function App() {
             Cerrar Vista
           </button>
         </div>
+        {/* Contenedor de scroll con touch-pan-x forzado */}
         <div 
           ref={landscapeScrollRef}
-          className="flex-grow overflow-x-auto overflow-y-hidden touch-pan-x bg-white"
-          style={{ WebkitOverflowScrolling: 'touch' }}
+          className="flex-grow overflow-x-auto overflow-y-hidden bg-white"
+          style={{ 
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-x'
+          }}
         >
-          {/* Forzamos un ancho mínimo basado en la cantidad de registros para asegurar el scroll lateral */}
+          {/* El ancho se calcula para que siempre haya espacio para deslizar si hay suficientes registros */}
           <div 
             style={{ 
-              width: `${Math.max(window.innerWidth, weightEntries.length * 50)}px`,
-              height: '100%' 
+              width: `${Math.max(window.innerWidth + 10, weightEntries.length * 60)}px`,
+              height: '100%',
+              touchAction: 'pan-x'
             }} 
             className="px-4 py-2"
           >
@@ -166,7 +171,7 @@ function App() {
           </div>
         </div>
         <div className="bg-slate-50 border-t border-slate-200 py-1 text-center">
-          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Desliza lateralmente para ver registros anteriores</p>
+          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Desliza para ver días anteriores • Pulsa en los puntos para ver el peso</p>
         </div>
       </div>
     );
@@ -294,7 +299,7 @@ function App() {
                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <h2 className="text-2xl font-black text-slate-800 mb-1 uppercase tracking-tight">Peso Tracker</h2>
-            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 2.5.1</p>
+            <p className="text-indigo-600 font-bold text-sm mb-6">Versión 2.6</p>
             <div className="space-y-4 text-slate-600">
               <div>
                 <p className="text-xs uppercase font-bold text-slate-400 tracking-widest">Autor</p>

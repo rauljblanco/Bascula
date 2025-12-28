@@ -12,7 +12,11 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
 
-  const handleExport = async () => {
+  /**
+   * Ejecuta la exportación usando el método tradicional de enlace <a> con atributo 'download'.
+   * Este método es el más compatible para disparar la descarga directa en Android.
+   */
+  const handleExport = () => {
     if (isExporting) return;
     setIsExporting(true);
     setExportSuccess(false);
@@ -24,42 +28,46 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
       return;
     }
 
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hour = String(now.getHours()).padStart(2, '0');
-    const min = String(now.getMinutes()).padStart(2, '0');
-    
-    // Nomenclatura estricta solicitada
-    const fileName = `Peso_Tracker_${year}_${month}_${day}_${hour}_${min}.json`;
-    const dataStr = JSON.stringify(entries, null, 2);
-
-    // Forzamos comportamiento de descarga tradicional para Android/Móvil
-    // Esto es más propenso a omitir diálogos si el navegador está configurado para descargar directamente
     try {
-      const blob = new Blob([dataStr], { type: 'application/octet-stream' }); // Cambiado a octet-stream para forzar descarga
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hour = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      
+      const fileName = `Peso_Tracker_${year}_${month}_${day}_${hour}_${min}.json`;
+      const dataStr = JSON.stringify(entries, null, 2);
+
+      // Creamos el Blob y la URL
+      const blob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       
+      // Creamos un enlace temporal invisible
       const link = document.createElement('a');
       link.href = url;
       link.download = fileName;
+      link.style.display = 'none';
       
-      // Adjuntar al cuerpo para asegurar ejecución en navegadores móviles estrictos
+      // Añadimos al documento para que funcione en todos los navegadores móviles
       document.body.appendChild(link);
+      
+      // Simulamos el click
       link.click();
       
+      // Limpiamos recursos con un pequeño retardo
       setTimeout(() => {
-        if (document.body.contains(link)) document.body.removeChild(link);
+        document.body.removeChild(link);
         URL.revokeObjectURL(url);
         setIsExporting(false);
         setExportSuccess(true);
-        setTimeout(() => setExportSuccess(false), 6000);
-      }, 500);
+        // Ocultar mensaje de éxito tras unos segundos
+        setTimeout(() => setExportSuccess(false), 5000);
+      }, 200);
 
     } catch (err) {
       console.error("Error en exportación:", err);
-      onError("Error al generar el archivo. Inténtalo de nuevo.");
+      onError("No se pudo completar la exportación. Revisa los permisos.");
       setIsExporting(false);
     }
   };
@@ -116,10 +124,10 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
           <div className="flex items-start gap-3">
             <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
             <div>
-              <p className="font-bold text-sm">¡Exportación iniciada!</p>
+              <p className="font-bold text-sm">¡Archivo descargado!</p>
               <p className="text-[10px] opacity-90 leading-tight">
-                El archivo se guardará con el nombre configurado.<br/>
-                Si el navegador pregunta, confirma para finalizar.
+                Revisa la carpeta de <strong>Descargas</strong> de tu dispositivo.<br/>
+                Nombre: Peso_Tracker_...json
               </p>
             </div>
           </div>

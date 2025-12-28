@@ -73,7 +73,7 @@ export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterP
   const yAxisDomain = [Math.floor(minWeight - 1), Math.ceil(maxWeight + 1)];
 
   return (
-    <div className="w-full h-full touch-pan-x">
+    <div className="w-full h-full" style={{ touchAction: 'pan-x' }}>
       {!isLandscape && weightDifference !== null && (
         <div className="text-center mb-4 text-sm font-semibold" aria-live="polite">
           <span className="text-slate-500">Cambio periodo: </span>
@@ -82,9 +82,13 @@ export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterP
           </span>
         </div>
       )}
-      <div className={isLandscape ? "h-[85vh] pt-4" : "h-72"}>
+      <div className={isLandscape ? "h-[80vh] pt-4" : "h-72"}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={filteredData} margin={{ top: 10, right: 30, left: -20, bottom: 20 }}>
+          <LineChart 
+            data={filteredData} 
+            margin={{ top: 10, right: 30, left: -20, bottom: 20 }}
+            style={{ touchAction: 'pan-x' }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
             <XAxis
               dataKey="timestamp"
@@ -113,8 +117,7 @@ export const WeightChart: React.FC<WeightChartProps> = ({ weightEntries, filterP
               }}
               formatter={(value: number) => [`${value.toFixed(1)} kg`, 'Peso']}
               labelFormatter={(unixTime) => new Date(unixTime).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
-              // Desactivamos el "Tooltip" que sigue al dedo para no entorpecer el scroll en modo landscape
-              // Pero lo mantenemos si es un click puntual
+              // Solo activamos por click en landscape para no interferir con el scroll horizontal
               trigger={isLandscape ? 'click' : 'hover'}
             />
             <Line
