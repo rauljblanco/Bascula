@@ -27,7 +27,6 @@ function App() {
       setIsLandscape(landscape);
       
       if (landscape) {
-        // Retardo para asegurar que el layout se ha ajustado antes de scrollear al final
         setTimeout(() => {
           if (landscapeScrollRef.current) {
             landscapeScrollRef.current.scrollLeft = landscapeScrollRef.current.scrollWidth;
@@ -56,54 +55,48 @@ function App() {
   }, [fetchWeightEntries]);
 
   /**
-   * Función para exportar los datos mediante descarga directa.
-   * Modificada para máxima compatibilidad con PWA en Android.
+   * Función de exportación optimizada para Android PWA usando Web Share API.
+   * Evita el cierre forzado en Android instalado.
    */
-  const handleExportMobile = useCallback(() => {
+  const handleExportMobile = useCallback(async () => {
     if (weightEntries.length === 0) {
       setError("No hay datos para exportar.");
       return;
     }
 
     try {
-      const now = new Date();
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const year = now.getFullYear();
-      const month = pad(now.getMonth() + 1);
-      const day = pad(now.getDate());
-      const hour = pad(now.getHours());
-      const min = pad(now.getMinutes());
-      
-      // Nombre de archivo simplificado para evitar errores en Android
-      const fileName = `Peso_Tracker_${year}_${month}_${day}_${hour}_${min}.json`;
-      
       const dataStr = JSON.stringify(weightEntries, null, 2);
+      const fileName = `pesos_tracker_${new Date().toISOString().split('T')[0]}.json`;
       
-      // Convertimos a Base64 para el Data URL (MIME octet-stream para forzar descarga)
-      const base64Data = btoa(unescape(encodeURIComponent(dataStr)));
-      const dataUrl = `data:application/octet-stream;base64,${base64Data}`;
-      
-      const link = document.createElement('a');
-      link.href = dataUrl;
-      link.setAttribute('download', fileName);
-      link.style.display = 'none';
-      
-      document.body.appendChild(link);
-      
-      // Retardo crítico de 100ms para que el SO Android procese la intención de descarga
-      setTimeout(() => {
-        link.click();
-        // Limpieza del DOM tras un periodo prudencial
-        setTimeout(() => {
-          if (document.body.contains(link)) {
-            document.body.removeChild(link);
-          }
-        }, 500);
-      }, 100);
+      // Creamos un archivo real en memoria
+      const file = new File([dataStr], fileName, { type: 'application/json' });
 
+      // Comprobamos si el móvil permite compartir archivos
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Copia de Seguridad Peso Tracker',
+          text: 'Aquí tienes tu copia de seguridad de registros de peso.'
+        });
+      } else {
+        // Plan B: Descarga tradicional como plan B
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 100);
+      }
     } catch (e) {
-      console.error("Export error:", e);
-      setError("No se pudo generar el archivo de exportación.");
+      console.error("Error al exportar:", e);
+      if ((e as Error).name !== 'AbortError') {
+        setError("No se pudo completar la exportación.");
+      }
     }
   }, [weightEntries]);
 

@@ -5,7 +5,7 @@ import { importWeightEntries } from '../services/localStorageService';
 interface DataManagementProps {
   onDataChanged: () => void;
   onError: (msg: string) => void;
-  onExport: () => void;
+  onExport: () => void | Promise<void>;
 }
 
 export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, onError, onExport }) => {
@@ -13,22 +13,18 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
 
-  const handleExportClick = () => {
+  const handleExportClick = async () => {
     if (isExporting) return;
     setIsExporting(true);
     setExportSuccess(false);
 
     try {
-      // Llamamos a la función de exportación que ahora tiene su propio retardo de 100ms
-      onExport();
+      // Llamada a la función de exportación
+      await onExport();
       
-      // Simular un estado de éxito visual progresivo
-      setTimeout(() => {
-        setExportSuccess(true);
-        setIsExporting(false);
-        // Ocultar mensaje de éxito tras unos segundos
-        setTimeout(() => setExportSuccess(false), 5000);
-      }, 300); // Pequeño margen para que la animación coincida con el retardo de App.tsx
+      setExportSuccess(true);
+      setIsExporting(false);
+      setTimeout(() => setExportSuccess(false), 5000);
       
     } catch (err) {
       console.error("Error en exportación:", err);
@@ -89,10 +85,9 @@ export const DataManagement: React.FC<DataManagementProps> = ({ onDataChanged, o
           <div className="flex items-start gap-3">
             <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
             <div>
-              <p className="font-bold text-sm">¡Descarga iniciada!</p>
+              <p className="font-bold text-sm">Copia gestionada</p>
               <p className="text-[10px] opacity-90 leading-tight">
-                El archivo se guardará en tu carpeta de <strong>Descargas</strong>.<br/>
-                Nombre: Peso_Tracker_...json
+                Se ha abierto el menú de compartir/guardar de tu dispositivo.
               </p>
             </div>
           </div>
